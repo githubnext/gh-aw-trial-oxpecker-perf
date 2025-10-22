@@ -1,0 +1,60 @@
+name: 'Daily Perf Improver - Build Steps'
+description: 'Setup and build the Oxpecker project for performance development'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup .NET SDK
+      shell: bash
+      run: |
+        echo "Setting up .NET SDK 9.0.300..." | tee -a build-steps.log
+        # Note: .NET setup is typically done by the workflow calling this action
+        # This step documents the requirement
+        dotnet --version | tee -a build-steps.log
+
+    - name: Git config workaround
+      shell: bash
+      run: |
+        echo "Applying git config workaround..." | tee -a build-steps.log
+        git config --global --add safe.directory '*' 2>&1 | tee -a build-steps.log
+
+    - name: Restore .NET tools
+      shell: bash
+      run: |
+        echo "Restoring .NET tools (fantomas, fable)..." | tee -a build-steps.log
+        dotnet tool restore 2>&1 | tee -a build-steps.log
+
+    - name: Restore Oxpecker.sln dependencies
+      shell: bash
+      run: |
+        echo "Restoring Oxpecker.sln NuGet dependencies..." | tee -a build-steps.log
+        dotnet restore Oxpecker.sln 2>&1 | tee -a build-steps.log
+
+    - name: Build Oxpecker.sln
+      shell: bash
+      run: |
+        echo "Building Oxpecker.sln..." | tee -a build-steps.log
+        dotnet build Oxpecker.sln --no-restore 2>&1 | tee -a build-steps.log
+
+    - name: Test Oxpecker.sln
+      shell: bash
+      run: |
+        echo "Running tests for Oxpecker.sln..." | tee -a build-steps.log
+        dotnet test Oxpecker.sln --no-restore --no-build 2>&1 | tee -a build-steps.log
+
+    - name: Restore Oxpecker.Solid.sln dependencies
+      shell: bash
+      run: |
+        echo "Restoring Oxpecker.Solid.sln NuGet dependencies..." | tee -a build-steps.log
+        dotnet restore Oxpecker.Solid.sln 2>&1 | tee -a build-steps.log
+
+    - name: Build Oxpecker.Solid.sln
+      shell: bash
+      run: |
+        echo "Building Oxpecker.Solid.sln..." | tee -a build-steps.log
+        dotnet build Oxpecker.Solid.sln --no-restore 2>&1 | tee -a build-steps.log
+
+    - name: Build complete
+      shell: bash
+      run: |
+        echo "Build steps completed successfully!" | tee -a build-steps.log
+        echo "Build log saved to: build-steps.log" | tee -a build-steps.log
