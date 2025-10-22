@@ -17,6 +17,7 @@
         <Compile Include="src\Components\TodoItem.fs" />
         <Compile Include="src\Components\TodoList.fs" />
         <Compile Include="src\App.fs" />
+        <Compile Include="src\About.fs" />
         <Compile Include="src\Program.fs" />
         <Content Include="src\index.css" />
         <Content Include="package.json" />
