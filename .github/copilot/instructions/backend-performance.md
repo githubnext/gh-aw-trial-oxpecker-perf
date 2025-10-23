@@ -43,22 +43,37 @@ bombardier -c 125 -n 10000 http://localhost:5000/api/endpoint
 
 ### 2. ViewEngine Performance
 
-**Common Bottlenecks:**
-- Large HTML string concatenations
-- Repeated attribute calculations
-- Inefficient component composition
-- Memory allocations during rendering
+**Oxpecker ViewEngine is highly optimized out-of-the-box:**
+- Current benchmarks: **653.5 ns** rendering time, **928 B** allocation
+- 77% faster than Giraffe (1,153 ns, 11,000 B)
+- 118% faster than Falco (1,422 ns, 2,432 B)
+- 91% less memory than Giraffe, 62% less than Falco
 
-**Measurement Strategies:**
-- Benchmark rendering with various data sizes
-- Profile memory allocations during render
-- Measure time-to-first-byte (TTFB) in production
+**Optimization Techniques Already Implemented:**
+- StringBuilder pooling (Microsoft.Extensions.ObjectPool)
+- CustomQueue linked list for zero-copy element traversal
+- SIMD-optimized HTML encoding with SearchValues
+- Span<char> for zero-allocation string slicing
+- Aggressive inlining of builder methods
+- ArrayPool for UTF8 conversion
 
-**Optimization Techniques:**
-- Use streaming responses for large HTML documents
-- Cache rendered fragments when appropriate
-- Minimize attribute calculations in tight loops
-- Use string interpolation efficiently
+**When to Optimize Further:**
+- Profile first - current performance is excellent for most use cases
+- For very large documents (>100KB HTML), consider streaming with `Render.toStreamAsync`
+- For repeated renders of same content, implement fragment caching at application level
+- For high-throughput scenarios, measure actual bottlenecks before optimizing
+
+**Measurement Example:**
+```bash
+# Run ViewEngine benchmarks
+cd tests/PerfTest
+dotnet run -c Release -- --filter "*ViewEngine*"
+```
+
+**When NOT to Optimize:**
+- Don't optimize ViewEngine internals without profiling
+- Element construction allocations (classes, CustomQueueItem) are intentional design trade-offs
+- Further allocation reduction would require significant complexity with minimal gains
 
 ### 3. Middleware Performance
 
