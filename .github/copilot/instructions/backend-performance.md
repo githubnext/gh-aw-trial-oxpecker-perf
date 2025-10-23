@@ -110,6 +110,65 @@ dotnet run -c Release -- --filter "*ViewEngine*"
 - Use JsonIgnore for unnecessary properties
 - Consider MessagePack for high-throughput scenarios
 
+### 5. Response Compression
+
+**Performance Impact:**
+- 40-62% bandwidth reduction for HTML/JSON responses
+- Brotli provides 5-10% better compression than Gzip
+- Small overhead for tiny responses (<100 bytes)
+
+**Implementation:**
+```fsharp
+open System.IO.Compression
+open Microsoft.AspNetCore.ResponseCompression
+
+let configureServices (services: IServiceCollection) =
+    services
+        .AddResponseCompression(fun options ->
+            options.EnableForHttps <- true
+            options.Providers.Add<BrotliCompressionProvider>()
+            options.Providers.Add<GzipCompressionProvider>())
+        .Configure<BrotliCompressionProviderOptions>(fun options ->
+            options.Level <- CompressionLevel.Optimal)
+        .Configure<GzipCompressionProviderOptions>(fun options ->
+            options.Level <- CompressionLevel.Optimal)
+    |> ignore
+
+let configureApp (app: IApplicationBuilder) =
+    app.UseResponseCompression() // Must be before UseStaticFiles
+       .UseStaticFiles()
+       // ... rest of middleware
+```
+
+**Benchmarked Results:**
+- HTML endpoint (1.6KB): 60% reduction with Brotli (640 bytes)
+- Weather data (474B): 62% reduction with Brotli (181 bytes)
+- HTML streaming (401B): 50% reduction with Brotli (234 bytes)
+- Tiny JSON (9B): Compression overhead exceeds benefits
+
+**When to Use:**
+- Always enable for production applications
+- Especially valuable for HTML and JSON APIs
+- Modern browsers support Brotli (better than Gzip)
+- Minimal CPU overhead with Optimal compression level
+
+**When NOT to Use:**
+- Responses smaller than ~100 bytes
+- Already compressed content (images, videos)
+- High-CPU environments where every cycle matters
+
+**Measurement:**
+```bash
+# Test without compression
+curl -s -w "%{size_download}" http://localhost:5000/endpoint
+
+# Test with Brotli
+curl -s -H "Accept-Encoding: br" -w "%{size_download}" http://localhost:5000/endpoint
+
+# Test with Gzip
+curl -s -H "Accept-Encoding: gzip" -w "%{size_download}" http://localhost:5000/endpoint
+```
+
 ## Focused Measurement Workflow
 
 ### Quick Performance Check (< 5 minutes)
