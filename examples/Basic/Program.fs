@@ -1,8 +1,10 @@
 ﻿open System
+open System.IO.Compression
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Authorization
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.ResponseCompression
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Microsoft.Net.Http.Headers
@@ -238,10 +240,22 @@ let errorHandler (ctx: HttpContext) (next: RequestDelegate) =
     :> Task
 
 let configureApp (appBuilder: IApplicationBuilder) =
-    appBuilder.UseRouting().Use(errorHandler).UseOxpecker(endpoints).Run(notFoundHandler)
+    appBuilder.UseResponseCompression().UseRouting().Use(errorHandler).UseOxpecker(endpoints).Run(notFoundHandler)
 
 let configureServices (services: IServiceCollection) =
-    services.AddRouting().AddOxpecker().AddOpenApi() |> ignore
+    services
+        .AddRouting()
+        .AddResponseCompression(fun options ->
+            options.EnableForHttps <- true
+            options.Providers.Add<BrotliCompressionProvider>()
+            options.Providers.Add<GzipCompressionProvider>())
+        .Configure<BrotliCompressionProviderOptions>(fun (options: BrotliCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
+        .Configure<GzipCompressionProviderOptions>(fun (options: GzipCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
+        .AddOxpecker()
+        .AddOpenApi()
+    |> ignore
 
 
 [<EntryPoint>]
