@@ -15,6 +15,7 @@
         <Compile Include="Form.fs" />
         <Compile Include="JSON.fs" />
         <Compile Include="JSONRealWorld.fs" />
+        <Compile Include="EndToEndAPI.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
