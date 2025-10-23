@@ -1,9 +1,11 @@
 ﻿module Backend.Program
 
+open System.IO.Compression
 open System.Threading.Tasks
 open Backend.Env
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.ResponseCompression
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Oxpecker
@@ -53,6 +55,7 @@ let configureApp (appBuilder: IApplicationBuilder) =
         Logger = appBuilder.ApplicationServices.GetRequiredService<ILogger>()
     }
     appBuilder
+        .UseResponseCompression()
         .UseRouting()
         .UseCors()
         .Use(errorHandler)
@@ -64,6 +67,18 @@ let configureServices (services: IServiceCollection) =
         .AddCors(fun options -> options.AddDefaultPolicy(fun policy ->
             policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader() |> ignore))
         .AddRouting()
+        .AddResponseCompression(fun options ->
+            // Enable compression for HTTPS (safe for JSON APIs)
+            options.EnableForHttps <- true
+            // Add Brotli compression provider (more efficient than Gzip)
+            options.Providers.Add<BrotliCompressionProvider>()
+            options.Providers.Add<GzipCompressionProvider>())
+        // Configure Brotli for optimal compression
+        .Configure<BrotliCompressionProviderOptions>(fun (options: BrotliCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
+        // Configure Gzip as fallback for older clients
+        .Configure<GzipCompressionProviderOptions>(fun (options: GzipCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
         .AddOxpecker() |> ignore
 
 [<EntryPoint>]
