@@ -1,6 +1,8 @@
-﻿open System.Threading.Tasks
+﻿open System.IO.Compression
+open System.Threading.Tasks
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.ResponseCompression
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Logging
 open Oxpecker
@@ -75,6 +77,7 @@ let errorHandler (ctx: HttpContext) (next: RequestDelegate) =
 
 let configureApp (appBuilder: IApplicationBuilder) =
     appBuilder
+        .UseResponseCompression()
         .UseStaticFiles()
         .UseRouting()
         .Use(errorHandler)
@@ -84,6 +87,14 @@ let configureApp (appBuilder: IApplicationBuilder) =
 let configureServices (services: IServiceCollection) =
     services
         .AddRouting()
+        .AddResponseCompression(fun options ->
+            options.EnableForHttps <- true
+            options.Providers.Add<BrotliCompressionProvider>()
+            options.Providers.Add<GzipCompressionProvider>())
+        .Configure<BrotliCompressionProviderOptions>(fun (options: BrotliCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
+        .Configure<GzipCompressionProviderOptions>(fun (options: GzipCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
         .AddOxpecker()
     |> ignore
 

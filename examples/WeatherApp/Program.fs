@@ -1,7 +1,9 @@
 ﻿open System
+open System.IO.Compression
 open System.Threading.Tasks
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Http
+open Microsoft.AspNetCore.ResponseCompression
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.Logging
@@ -50,6 +52,7 @@ let configureApp (appBuilder: WebApplication) =
     else
         appBuilder.UseExceptionHandler("/error", true) |> ignore
     appBuilder
+        .UseResponseCompression()
         .UseStaticFiles()
         .UseAntiforgery()
         .UseRouting()
@@ -60,6 +63,18 @@ let configureServices (services: IServiceCollection) =
         .AddRouting()
         .AddLogging(fun builder -> builder.AddFilter("Microsoft.AspNetCore", LogLevel.Warning) |> ignore)
         .AddAntiforgery()
+        .AddResponseCompression(fun options ->
+            // Enable compression for all MIME types (default only compresses specific types)
+            options.EnableForHttps <- true
+            // Add Brotli compression provider (more efficient than Gzip)
+            options.Providers.Add<BrotliCompressionProvider>()
+            options.Providers.Add<GzipCompressionProvider>())
+        // Configure Brotli for maximum compression (trades CPU for smaller size)
+        .Configure<BrotliCompressionProviderOptions>(fun (options: BrotliCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
+        // Configure Gzip as fallback
+        .Configure<GzipCompressionProviderOptions>(fun (options: GzipCompressionProviderOptions) ->
+            options.Level <- CompressionLevel.Optimal)
         .AddOxpecker()
     |> ignore
 
